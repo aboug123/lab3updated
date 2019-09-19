@@ -1,0 +1,3 @@
+
+
+void enablespeaker(bool on);
