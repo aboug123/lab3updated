@@ -27,18 +27,14 @@
 // top of X-ohm potentiometer connected to +3.3V 
 #include <stdint.h>
 #include <stdio.h>
-#include "..\..\ValvanoWaveTM4C123v5\inc\ADCSWTrigger.h"
-#include "..\..\ValvanoWaveTM4C123v5\inc\ST7735.h"
-#include "..\..\ValvanoWaveTM4C123v5\inc\PLL.h"
-#include "..\..\ValvanoWaveTM4C123v5\inc\tm4c123gh6pm.h"
+#include "..\..\inc\ADCSWTrigger.h"
+#include "..\..\inc\ST7735.h"
+#include "..\..\inc\PLL.h"
+#include "..\..\inc\tm4c123gh6pm.h"
 #include "bool.h"
 #include "timers_init.h"
 #include "alarm.h"
 #include "speaker.h"
-
-
-
-
 
 #define PF3	            (*((volatile uint32_t *)0x40025012))
 #define PF2             (*((volatile uint32_t *)0x40025010))
@@ -52,31 +48,90 @@ long StartCritical (void);    // previous I bit, disable interrupts
 void EndCritical(long sr);    // restore I bit to previous value
 void WaitForInterrupt(void);  // low power mode
 
+uint32_t gTime = 0;
+uint32_t currentsecs, currentmin, currenthour, oldsecs, oldmin, oldhour, timersec, timermin, timerhour = 0 ;
 
-uint32_t alarm_hours = 0;
-uint32_t alarm_minutes= 0;
-bool timersec = false;						
-bool timerhour = false;						
-bool timermin = false;					
-uint32_t currenthour = 0;						
-uint32_t currentsecs = 0;						
-uint32_t currentmin = 0;						
-uint32_t oldhour = 0;										
-uint32_t oldsecs = 0;										
-uint32_t oldmin = 0;			
+void Timer0A_Init(uint32_t period){
+  volatile uint32_t delay;
+  // **** general initialization ****
+  SYSCTL_RCGCTIMER_R |= 0x01;      // activate timer0
+  delay = SYSCTL_RCGCTIMER_R;      // allow time to finish activating
+  TIMER0_CTL_R &= ~TIMER_CTL_TAEN; // disable timer0A during setup
+  TIMER0_CFG_R = 0;                // configure for 32-bit timer mode
+  // **** timer0A initialization ****
+                                   // configure for periodic mode
+  TIMER0_TAMR_R = TIMER_TAMR_TAMR_PERIOD;
+  TIMER0_TAILR_R = period-1;         // start value for 100 Hz interrupts
+  TIMER0_IMR_R |= TIMER_IMR_TATOIM;// enable timeout (rollover) interrupt
+  TIMER0_ICR_R = TIMER_ICR_TATOCINT;// clear timer0A timeout flag
+  TIMER0_CTL_R |= TIMER_CTL_TAEN;  // enable timer0A 32-b, periodic, interrupts
+  // **** interrupt initialization ****
+                                   // Timer0A=priority 2
+	
+	
+  NVIC_PRI4_R = (NVIC_PRI4_R&0x00FFFFFF)|0x20000000; // top 3 bits
+  NVIC_EN0_R = 1<<19;              // enable interrupt 19 in NVIC
+}
+
+
+void Timer0A_Handler(void) {
+	TIMER0_ICR_R = TIMER_ICR_TATOCINT;
+	
+	gTime = (gTime + 1) % 84600;
+	currentsecs = gTime % 60;
+	currenthour = gTime / 3600;
+	currentmin = (gTime-(3600*(gTime/3600)))/60;
+	
+	char buf[15];
+	sprintf(buf, "%02d:%02d:%02d", currenthour, currentmin, currentsecs);
+	
+	ST7735_SetCursor(0,0);
+	ST7735_OutString(buf);
+
+	
+//	//PF1 ^=0x02;
+//	oldsecs = currentsecs;
+//	currentsecs = currentsecs +1;
+//	timersec = true;
+//	
+//	if (currentsecs >= 60){
+//		currentsecs = 0;
+//		oldmin = currentmin;
+//		currentmin = currentmin +1;
+//		timermin = true;
+//	}
+//	if (currentmin >= 60){
+//		currentmin = 0;
+//		oldhour = currenthour;
+//		currenthour = currenthour +1;
+//		timerhour = true;
+//	}
+//	if (currenthour >= 12){
+//		
+//		currenthour = 0;
+//		
+//	}
+	
+	//PF1 ^=0x02;
+	
+	
+}	
 
 int main(){
 	
-	DisableInterrupts();
+  DisableInterrupts();
 	PLL_Init(Bus80MHz);
+	Output_Init();
 	Timer0A_Init( 80000000); // one second interrupts
-
+	SpeakerInit(2000, 1, 75);
 	EnableInterrupts();
+	
 	set_alarm_time();
+	
 	
 	while(1){
 		
-		PF2^=0x04;
+		//PF2^=0x04;
 		
 		if(timerhour == true) {
 			// print out the hour time on screen
@@ -94,20 +149,12 @@ int main(){
 		}
 		
 		set_alarm_time();
-		alarm_hours = get_alarmhour();
-		alarm_minutes = get_alarmmin();
 		
-		currenthour = get_timehour();
-		currentmin = get_timemin();
-		currentsecs = get_timesec();
-		
-		if( currentmin == alarm_minutes && currenthour == alarm_hours){
-			enablespeaker(true);
+		if( get_timemin() == get_alarmmin() && get_timehour() == get_alarmhour()){
+			EnableSpeaker(true);
 			
-		}
-		
-		else{
-			enablespeaker (false);
+		} else{
+			EnableSpeaker (false);
 			
 		}
 		
