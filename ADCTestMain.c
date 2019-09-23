@@ -34,6 +34,7 @@
 #include "bool.h"
 #include "timers_init.h"
 #include "alarm.h"
+#include "speaker.h"
 
 
 
@@ -95,6 +96,25 @@ int main(){
 		set_alarm_time();
 		alarm_hours = get_alarmhour();
 		alarm_minutes = get_alarmmin();
+		
+		currenthour = get_timehour();
+		currentmin = get_timemin();
+		currentsecs = get_timesec();
+		
+		if( currentmin == alarm_minutes && currenthour == alarm_hours){
+			enablespeaker(true);
+			
+		}
+		
+		else{
+			enablespeaker (false);
+			
+		}
+		
+	
+		
+		
+		
 		
 		
 	}	

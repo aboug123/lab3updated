@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "..\..\ValvanoWaveTM4C123v5\inc\tm4c123gh6pm.h"
 #include "bool.h"
+#include "timers_init.h"
 
 
 #define PF3	            (*((volatile uint32_t *)0x40025012))
@@ -53,7 +54,7 @@ void Timer0A_Handler(void) {
 		currenthour = currenthour +1;
 		timerhour = true;
 	}
-	if (currentsecs >= 12){
+	if (currenthour >= 12){
 		
 		currenthour = 0;
 		
@@ -61,12 +62,22 @@ void Timer0A_Handler(void) {
 	
 	PF1 ^=0x02;
 	
-	get_timemin
-	get_timesec
-	
-	
 	
 }
+
+	uint32_t get_timemin(void){
+		
+		return currentmin;
+	}
+	
+	uint32_t get_timesec(void){
+		return currentsecs;
+		
+	}
+		
+  uint32_t get_timehour(void){
+		return currenthour;
+	}
 
 
 void Timer1_Init(void){
