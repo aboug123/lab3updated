@@ -28,7 +28,29 @@
  */
 
 // user button connected to PF4 (increment counter on falling edge)
+#include <stdint.h>
+
+enum SetStates {set, hours, minutes, tHours, tMinutes, idle} ;
+typedef enum SetStates SetStates_t;
+
+struct Setter{
+	uint32_t aHour;
+	uint32_t aMin;
+	uint8_t aInit;
+	uint32_t tHour;
+	uint32_t tMin;
+	uint8_t tInit;
+	SetStates_t st;
+};
 
 
 void EdgeCounterPortF_Init(void);
+void Timer2A_Init100HzInt(void);
+uint32_t getAlarmHour(void);
+uint32_t getAlarmMin(void);
+uint8_t getAlarmInit(void);
+uint32_t getSetterHour(void);
+uint32_t getSetterMin(void);
+uint8_t getSetterInit(void);
+void button2Input(uint8_t);
 

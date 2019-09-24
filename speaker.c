@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../inc/tm4c123gh6pm.h"
+#include "../../inc/tm4c123gh6pm.h"
 #include "Speaker.h"
 
 #define MHZ_80 80000000
@@ -67,8 +67,9 @@ void SpeakerInit(uint32_t freq, uint8_t periodInSecs, uint8_t dutyCycle){
 	SYSCTL_RCGCGPIO_R |= 0x08;
 	while((SYSCTL_RCGCGPIO_R&0x08) == 0){};
 	GPIO_PORTD_DIR_R |= 0x02;	
-	GPIO_PORTD_AFSEL_R &= ~0x02;
-	GPIO_PORTD_AMSEL_R &= ~0x02;
+	GPIO_PORTD_DIR_R &= ~0x01;	
+	GPIO_PORTD_AFSEL_R &= ~0x03;
+	GPIO_PORTD_AMSEL_R &= ~0x03;
 	GPIO_PORTD_PCTL_R &= ~0x000000F0;
-	GPIO_PORTD_DEN_R |= 0x02;	
+	GPIO_PORTD_DEN_R |= 0x03;	
 }

@@ -32,16 +32,14 @@
 #include "..\..\inc\PLL.h"
 #include "..\..\inc\tm4c123gh6pm.h"
 #include "bool.h"
-#include "timers_init.h"
-#include "alarm.h"
 #include "speaker.h"
+#include "buttons.h"
+#include "ClockDisplay.h"
 
 #define PF3	            (*((volatile uint32_t *)0x40025012))
 #define PF2             (*((volatile uint32_t *)0x40025010))
 #define PF1             (*((volatile uint32_t *)0x40025008))
 
-#define CLK_PERIOD 10 //ms
-#define ADC_RANGE 4096
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
 long StartCritical (void);    // previous I bit, disable interrupts
@@ -49,7 +47,7 @@ void EndCritical(long sr);    // restore I bit to previous value
 void WaitForInterrupt(void);  // low power mode
 
 uint32_t gTime = 0;
-uint32_t currentsecs, currentmin, currenthour, oldsecs, oldmin, oldhour, timersec, timermin, timerhour = 0 ;
+uint32_t currentsecs, currentmin, currenthour = 0 ;
 
 void Timer0A_Init(uint32_t period){
   volatile uint32_t delay;
@@ -73,97 +71,48 @@ void Timer0A_Init(uint32_t period){
   NVIC_EN0_R = 1<<19;              // enable interrupt 19 in NVIC
 }
 
-
 void Timer0A_Handler(void) {
 	TIMER0_ICR_R = TIMER_ICR_TATOCINT;
 	
-	gTime = (gTime + 1) % 84600;
-	currentsecs = gTime % 60;
-	currenthour = gTime / 3600;
-	currentmin = (gTime-(3600*(gTime/3600)))/60;
+	if(getSetterInit()){
+		currenthour = getSetterHour();
+		currentmin = getSetterMin();
+		currentsecs = 0;
+		gTime = (currenthour * 3600) + (currentmin * 60);
+	} else {	
+		gTime = (gTime + 1) % 86400;
+		currentsecs = gTime % 60;
+		currenthour = gTime / 3600;
+		currentmin = (gTime-(3600*(gTime/3600)))/60;
+	}
 	
-	char buf[15];
-	sprintf(buf, "%02d:%02d:%02d", currenthour, currentmin, currentsecs);
+	clearHands();
+	setTime(currenthour, currentmin, currentsecs);
+	displayTime();
 	
-	ST7735_SetCursor(0,0);
-	ST7735_OutString(buf);
+	if(getAlarmInit() && (getAlarmHour() == currenthour) && (getAlarmMin() == currentmin)){
+	  EnableSpeaker(1);
+	} else {
+		EnableSpeaker(0);
+	}
+}
 
-	
-//	//PF1 ^=0x02;
-//	oldsecs = currentsecs;
-//	currentsecs = currentsecs +1;
-//	timersec = true;
-//	
-//	if (currentsecs >= 60){
-//		currentsecs = 0;
-//		oldmin = currentmin;
-//		currentmin = currentmin +1;
-//		timermin = true;
-//	}
-//	if (currentmin >= 60){
-//		currentmin = 0;
-//		oldhour = currenthour;
-//		currenthour = currenthour +1;
-//		timerhour = true;
-//	}
-//	if (currenthour >= 12){
-//		
-//		currenthour = 0;
-//		
-//	}
-	
-	//PF1 ^=0x02;
-	
-	
-}	
 
 int main(){
 	
   DisableInterrupts();
-	PLL_Init(Bus80MHz);
-	Output_Init();
-	Timer0A_Init( 80000000); // one second interrupts
+	clockDisplayInit();
+	Timer0A_Init(80000000); // one second interrupts
+	Timer2A_Init100HzInt();
 	SpeakerInit(2000, 1, 75);
+	EdgeCounterPortF_Init();
+	ADC0_InitSWTriggerSeq3_Ch9();         
+	ADC0_SAC_R |= 0x4;
 	EnableInterrupts();
-	
-	set_alarm_time();
 	
 	
 	while(1){
-		
-		//PF2^=0x04;
-		
-		if(timerhour == true) {
-			// print out the hour time on screen
-			timerhour = false;
-		}
-		
-		if(timermin == true) {
-			// print out the hour time on screen
-			timermin = false;
-		}
-			
-		if(timersec == true) {
-			// print out the hour time on screen
-			timersec = false;
-		}
-		
-		set_alarm_time();
-		
-		if( currentmin == get_alarmmin() && currenthour == get_alarmhour()){
-			EnableSpeaker(true);
-			
-		} else{
-			EnableSpeaker (false);
-			
-		}
-		
-	
-		
-		
-		
-		
-		
+		WaitForInterrupt();
 	}	
 }
 
