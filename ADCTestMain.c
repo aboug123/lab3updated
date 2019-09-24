@@ -150,7 +150,7 @@ int main(){
 		
 		set_alarm_time();
 		
-		if( get_timemin() == get_alarmmin() && get_timehour() == get_alarmhour()){
+		if( currentmin == get_alarmmin() && currenthour == get_alarmhour()){
 			EnableSpeaker(true);
 			
 		} else{
